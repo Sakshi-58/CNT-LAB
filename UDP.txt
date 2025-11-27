@@ -1,0 +1,202 @@
+nano udp_hello_server_labExam.c
+nano udp_hello_client_labExam.c
+gcc udp_hello_server_labExam.c -o server
+gcc udp_hello_client_labExam.c -o client
+./server
+
+UDP Hello
+Correct UDP Hello Server
+// udp_hello_server.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define BUFFER_SIZE 1024
+
+int main() {
+    int sockfd;
+    char buffer[BUFFER_SIZE];
+    struct sockaddr_in servaddr, cliaddr;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
+
+    printf("UDP Server listening on port %d...\n", PORT);
+
+    socklen_t len = sizeof(cliaddr);
+    int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0,
+                     (struct sockaddr*)&cliaddr, &len);
+
+    buffer[n] = '\0';
+    printf("Client: %s\n", buffer);
+
+    char *msg = "Hello from server";
+    sendto(sockfd, msg, strlen(msg), 0,
+           (struct sockaddr*)&cliaddr, len);
+
+    close(sockfd);
+    return 0;
+}
+
+
+
+
+Correct UDP Hello Client 
+
+// udp_hello_client.c
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define BUFFER_SIZE 1024
+
+int main() {
+    int sockfd;
+    char buffer[BUFFER_SIZE];
+    struct sockaddr_in servaddr;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(PORT);
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    char *msg = "Hello from client";
+
+    sendto(sockfd, msg, strlen(msg), 0,
+           (struct sockaddr*)&servaddr, sizeof(servaddr));
+
+    socklen_t len = sizeof(servaddr);
+    int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0,
+                     (struct sockaddr*)&servaddr, &len);
+
+    buffer[n] = '\0';
+    printf("Server: %s\n", buffer);
+
+    close(sockfd);
+    return 0;
+}
+
+
+Trignometry
+Server:
+// udp_trigonometry_server.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <math.h>
+
+#define PORT 8080
+#define BUF_SIZE 1024
+
+int main() {
+    int sockfd;
+    char buffer[BUF_SIZE];
+    struct sockaddr_in servaddr, clientAddr;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
+    printf("Trig Server Running on port %d...\n", PORT);
+
+    socklen_t addr_len = sizeof(clientAddr);
+
+    while (1) {
+        memset(buffer, 0, BUF_SIZE);
+
+        recvfrom(sockfd, buffer, BUF_SIZE, 0,
+                 (struct sockaddr*)&clientAddr, &addr_len);
+
+        char func[10];
+        double angle;
+
+        if (sscanf(buffer, "%s %lf", func, &angle) != 2)
+            continue;
+
+        double rad = angle * M_PI / 180.0;
+        double result;
+
+        if (strcasecmp(func, "sin") == 0) result = sin(rad);
+        else if (strcasecmp(func, "cos") == 0) result = cos(rad);
+        else if (strcasecmp(func, "tan") == 0) result = tan(rad);
+        else {
+            strcpy(buffer, "Invalid function");
+            sendto(sockfd, buffer, strlen(buffer), 0,
+                   (struct sockaddr*)&clientAddr, addr_len);
+            continue;
+        }
+
+        snprintf(buffer, BUF_SIZE, "%s(%lf) = %.6lf",
+                 func, angle, result);
+
+        sendto(sockfd, buffer, strlen(buffer), 0,
+               (struct sockaddr*)&clientAddr, addr_len);
+    }
+
+    close(sockfd);
+    return 0;
+}
+
+Client:
+// udp_trigonometry_client.c
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define BUF_SIZE 1024
+
+int main() {
+    int sockfd;
+    char buffer[BUF_SIZE];
+    struct sockaddr_in serverAddr;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(PORT);
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    socklen_t addr_len = sizeof(serverAddr);
+
+    while (1) {
+        printf("Enter (sin 30 / cos 60 / tan 45) or exit: ");
+        fgets(buffer, BUF_SIZE, stdin);
+
+        if (strncmp(buffer, "exit", 4) == 0) break;
+
+        sendto(sockfd, buffer, strlen(buffer), 0,
+               (struct sockaddr*)&serverAddr, addr_len);
+
+        memset(buffer, 0, BUF_SIZE);
+        recvfrom(sockfd, buffer, BUF_SIZE, 0,
+                 (struct sockaddr*)&serverAddr, &addr_len);
+
+        printf("Server Response: %s\n", buffer);
+    }
+
+    close(sockfd);
+    return 0;
+}
+
